@@ -7,7 +7,7 @@ const indexRoutes = require('./routes/index');
 const healthRoutes = require('./routes/health');
 
 const app = express();
-
+//Prueba con Grupoo Colono
 // Middlewares de seguridad
 app.use(helmet());
 app.use(cors());
