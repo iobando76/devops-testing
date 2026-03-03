@@ -10,7 +10,7 @@ Esta es una aplicación Node.js/Express diseñada para aprender y practicar GitH
 - Configuración para CI/CD
 - Dockerfile para containerización
 
-## 📦 Instalación
+### 📦 Instalación
 # Prueba con mis estudiantes
 ```bash
 # Clonar el repositorio
