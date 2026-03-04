@@ -1,7 +1,16 @@
-name: Pipeline 5 Fases (Simulado)
+name: Pipeline 5 Fases + Notificación (sin SMTP)
 
 on:
   workflow_dispatch:
+    inputs:
+      fail_fase3:
+        description: "Simular error en la Fase 3"
+        required: true
+        default: "true"
+
+permissions:
+  contents: read
+  issues: write
 
 jobs:
   fase1_inicializacion:
@@ -13,7 +22,7 @@ jobs:
         run: |
           t=$(( (RANDOM % 10) + 1 ))
           sleep "$t"
-          echo "✅ Fase 1 - Inicialización completada en ${t}s"
+          echo "✅ Fase 1 completada en ${t}s"
 
   fase2_carga_datos:
     name: Fase 2 - Carga de datos
@@ -25,19 +34,25 @@ jobs:
         run: |
           t=$(( (RANDOM % 10) + 1 ))
           sleep "$t"
-          echo "✅ Fase 2 - Carga de datos completada en ${t}s"
+          echo "✅ Fase 2 completada en ${t}s"
 
   fase3_procesamiento:
-    name: Fase 3 - Procesamiento
+    name: Fase 3 - Procesamiento (con fallo opcional)
     runs-on: ubuntu-latest
     needs: [fase2_carga_datos]
     steps:
-      - name: Simular ejecución
+      - name: Simular ejecución + posible fallo
         shell: bash
         run: |
           t=$(( (RANDOM % 10) + 1 ))
           sleep "$t"
-          echo "✅ Fase 3 - Procesamiento completada en ${t}s"
+
+          if [ "${{ inputs.fail_fase3 }}" = "true" ]; then
+            echo "❌ Fase 3 falló intencionalmente (simulación) luego de ${t}s"
+            exit 1
+          fi
+
+          echo "✅ Fase 3 completada en ${t}s"
 
   fase4_validacion:
     name: Fase 4 - Validación
@@ -49,7 +64,7 @@ jobs:
         run: |
           t=$(( (RANDOM % 10) + 1 ))
           sleep "$t"
-          echo "✅ Fase 4 - Validación completada en ${t}s"
+          echo "✅ Fase 4 completada en ${t}s"
 
   fase5_finalizacion:
     name: Fase 5 - Finalización
@@ -61,4 +76,84 @@ jobs:
         run: |
           t=$(( (RANDOM % 10) + 1 ))
           sleep "$t"
-          echo "✅ Fase 5 - Finalización completada en ${t}s"
+          echo "✅ Fase 5 completada en ${t}s"
+
+  notify_failure_issue:
+    name: Notificar fallo creando Issue
+    runs-on: ubuntu-latest
+    needs:
+      - fase1_inicializacion
+      - fase2_carga_datos
+      - fase3_procesamiento
+      - fase4_validacion
+      - fase5_finalizacion
+    if: always() && contains(join(needs.*.result, ','), 'failure')
+    steps:
+      - name: Crear Issue de fallo
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `❌ Error en pipeline (run #${context.runNumber})`;
+            const body = [
+              `Ocurrió un **ERROR** en el pipeline.`,
+              ``,
+              `**Repo:** ${context.repo.owner}/${context.repo.repo}`,
+              `**Workflow:** ${context.workflow}`,
+              `**Run:** #${context.runNumber}`,
+              `**URL:** https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              ``,
+              `**Resultados por fase:**`,
+              `- Fase 1: ${{ needs.fase1_inicializacion.result }}`,
+              `- Fase 2: ${{ needs.fase2_carga_datos.result }}`,
+              `- Fase 3: ${{ needs.fase3_procesamiento.result }}`,
+              `- Fase 4: ${{ needs.fase4_validacion.result }}`,
+              `- Fase 5: ${{ needs.fase5_finalizacion.result }}`
+            ].join('\n');
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['ci', 'failure']
+            });
+
+  notify_success_issue:
+    name: Notificar éxito creando Issue
+    runs-on: ubuntu-latest
+    needs:
+      - fase1_inicializacion
+      - fase2_carga_datos
+      - fase3_procesamiento
+      - fase4_validacion
+      - fase5_finalizacion
+    if: always() && !contains(join(needs.*.result, ','), 'failure')
+    steps:
+      - name: Crear Issue de éxito
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `✅ Pipeline OK (run #${context.runNumber})`;
+            const body = [
+              `El pipeline terminó **correctamente**.`,
+              ``,
+              `**Repo:** ${context.repo.owner}/${context.repo.repo}`,
+              `**Workflow:** ${context.workflow}`,
+              `**Run:** #${context.runNumber}`,
+              `**URL:** https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              ``,
+              `**Resultados por fase:**`,
+              `- Fase 1: ${{ needs.fase1_inicializacion.result }}`,
+              `- Fase 2: ${{ needs.fase2_carga_datos.result }}`,
+              `- Fase 3: ${{ needs.fase3_procesamiento.result }}`,
+              `- Fase 4: ${{ needs.fase4_validacion.result }}`,
+              `- Fase 5: ${{ needs.fase5_finalizacion.result }}`
+            ].join('\n');
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['ci', 'success']
+            });
