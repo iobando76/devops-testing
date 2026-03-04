@@ -1,0 +1,64 @@
+name: Pipeline 5 Fases (Simulado)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fase1_inicializacion:
+    name: Fase 1 - Inicialización
+    runs-on: ubuntu-latest
+    steps:
+      - name: Simular ejecución
+        shell: bash
+        run: |
+          t=$(( (RANDOM % 10) + 1 ))
+          sleep "$t"
+          echo "✅ Fase 1 - Inicialización completada en ${t}s"
+
+  fase2_carga_datos:
+    name: Fase 2 - Carga de datos
+    runs-on: ubuntu-latest
+    needs: [fase1_inicializacion]
+    steps:
+      - name: Simular ejecución
+        shell: bash
+        run: |
+          t=$(( (RANDOM % 10) + 1 ))
+          sleep "$t"
+          echo "✅ Fase 2 - Carga de datos completada en ${t}s"
+
+  fase3_procesamiento:
+    name: Fase 3 - Procesamiento
+    runs-on: ubuntu-latest
+    needs: [fase2_carga_datos]
+    steps:
+      - name: Simular ejecución
+        shell: bash
+        run: |
+          t=$(( (RANDOM % 10) + 1 ))
+          sleep "$t"
+          echo "✅ Fase 3 - Procesamiento completada en ${t}s"
+
+  fase4_validacion:
+    name: Fase 4 - Validación
+    runs-on: ubuntu-latest
+    needs: [fase3_procesamiento]
+    steps:
+      - name: Simular ejecución
+        shell: bash
+        run: |
+          t=$(( (RANDOM % 10) + 1 ))
+          sleep "$t"
+          echo "✅ Fase 4 - Validación completada en ${t}s"
+
+  fase5_finalizacion:
+    name: Fase 5 - Finalización
+    runs-on: ubuntu-latest
+    needs: [fase4_validacion]
+    steps:
+      - name: Simular ejecución
+        shell: bash
+        run: |
+          t=$(( (RANDOM % 10) + 1 ))
+          sleep "$t"
+          echo "✅ Fase 5 - Finalización completada en ${t}s"
