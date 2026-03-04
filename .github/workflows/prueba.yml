@@ -8,10 +8,6 @@ on:
         required: true
         default: "false"
 
-permissions:
-  contents: read
-  issues: write
-
 jobs:
   dev:
     name: Stage DEV
@@ -22,14 +18,14 @@ jobs:
         run: |
           t=$(( (RANDOM % 10) + 1 ))
           sleep "$t"
-          echo "✅ [DEV] Fase 1 - Inicialización completada en ${t}s"
+          echo "✅ [DEV] Fase 1 completada en ${t}s"
 
       - name: Fase 2 - Carga de datos
         shell: bash
         run: |
           t=$(( (RANDOM % 10) + 1 ))
           sleep "$t"
-          echo "✅ [DEV] Fase 2 - Carga de datos completada en ${t}s"
+          echo "✅ [DEV] Fase 2 completada en ${t}s"
 
   test:
     name: Stage TEST
@@ -47,14 +43,14 @@ jobs:
             exit 1
           fi
 
-          echo "✅ [TEST] Fase 3 - Procesamiento completada en ${t}s"
+          echo "✅ [TEST] Fase 3 completada en ${t}s"
 
       - name: Fase 4 - Validación
         shell: bash
         run: |
           t=$(( (RANDOM % 10) + 1 ))
           sleep "$t"
-          echo "✅ [TEST] Fase 4 - Validación completada en ${t}s"
+          echo "✅ [TEST] Fase 4 completada en ${t}s"
 
   prod:
     name: Stage PROD
@@ -66,70 +62,34 @@ jobs:
         run: |
           t=$(( (RANDOM % 10) + 1 ))
           sleep "$t"
-          echo "✅ [PROD] Fase 5 - Deploy/Finalización completada en ${t}s"
+          echo "✅ [PROD] Fase 5 completada en ${t}s"
 
-  notify_failure_issue:
-    name: Notificar fallo (Issue)
+  notify_summary:
+    name: Notificación (Summary)
     runs-on: ubuntu-latest
     needs: [dev, test, prod]
-    if: always() && contains(join(needs.*.result, ','), 'failure')
+    if: always()
     steps:
-      - name: Crear Issue de fallo
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const title = `❌ CI/CD falló (run #${context.runNumber})`;
-            const body = [
-              `Ocurrió un **ERROR** en el pipeline Dev → Test → Prod.`,
-              ``,
-              `**Repo:** ${context.repo.owner}/${context.repo.repo}`,
-              `**Workflow:** ${context.workflow}`,
-              `**Run:** #${context.runNumber}`,
-              `**URL:** https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
-              ``,
-              `**Resultados por stage:**`,
-              `- DEV:  ${{ needs.dev.result }}`,
-              `- TEST: ${{ needs.test.result }}`,
-              `- PROD: ${{ needs.prod.result }}`
-            ].join('\n');
-
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title,
-              body,
-              labels: ['ci', 'failure']
-            });
-
-  notify_success_issue:
-    name: Notificar éxito (Issue)
-    runs-on: ubuntu-latest
-    needs: [dev, test, prod]
-    if: always() && !contains(join(needs.*.result, ','), 'failure')
-    steps:
-      - name: Crear Issue de éxito
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const title = `✅ CI/CD OK (run #${context.runNumber})`;
-            const body = [
-              `El pipeline Dev → Test → Prod terminó **correctamente**.`,
-              ``,
-              `**Repo:** ${context.repo.owner}/${context.repo.repo}`,
-              `**Workflow:** ${context.workflow}`,
-              `**Run:** #${context.runNumber}`,
-              `**URL:** https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
-              ``,
-              `**Resultados por stage:**`,
-              `- DEV:  ${{ needs.dev.result }}`,
-              `- TEST: ${{ needs.test.result }}`,
-              `- PROD: ${{ needs.prod.result }}`
-            ].join('\n');
-
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title,
-              body,
-              labels: ['ci', 'success']
-            });
+      - name: Escribir resumen
+        shell: bash
+        run: |
+          {
+            echo "## Resultado CI/CD Dev → Test → Prod"
+            echo ""
+            echo "**Repo:** $GITHUB_REPOSITORY"
+            echo "**Run:** #$GITHUB_RUN_NUMBER"
+            echo "**URL:** https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo ""
+            echo "### Resultados por stage"
+            echo "- DEV:  ${{ needs.dev.result }}"
+            echo "- TEST: ${{ needs.test.result }}"
+            echo "- PROD: ${{ needs.prod.result }}"
+            echo ""
+            if echo "${{ join(needs.*.result, ',') }}" | grep -q "failure"; then
+              echo "### Estado"
+              echo "❌ Falló"
+            else
+              echo "### Estado"
+              echo "✅ OK"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
